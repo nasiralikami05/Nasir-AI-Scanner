@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nasir AI - Live Screen</title>
+<style>
+body{font-family:system-ui;background:#0b1220;color:#fff;padding:12px}
+.card{background:#151e32;padding:14px;border-radius:16px;margin-top:12px;border:1px solid #243056}
+button{width:100%;padding:14px;margin-top:8px;border-radius:10px;border:none;font-size:16px;font-weight:bold}
+.btn-blue{background:#3b82f6;color:#fff}.btn-green{background:#22c55e;color:#000}.btn-red{background:#ef4444;color:#fff}
+video{width:100%;border-radius:12px;background:#000}
+</style></head><body>
+<h2>📹 Nasir AI - Live Screen Scanner</h2>
+<div class="card">
+<button class="btn-blue" id="startBtn" onclick="startCapture()">📹 START CAMERA / ATTACH TO QUOTEX</button>
+<button class="btn-green" id="analyzeBtn" onclick="toggleAnalysis()" style="display:none">⚡ LIVE ANALYSIS START</button>
+<button class="btn-red" id="stopBtn" onclick="stopAll()" style="display:none">⏹️ STOP</button>
+</div>
+<div class="card"><video id="video" autoplay muted playsinline></video><canvas id="canvas" style="display:none"></canvas><div id="status">Camera off hai</div></div>
+<div class="card" id="resultCard" style="display:none"><h1 id="signal">WAIT...</h1><p id="details"></p><p>Green: <span id="greenPx">0</span> | Red: <span id="redPx">0</span></p></div>
+<script>
+let stream=null,analyzing=false,interval=null;
+const video=document.getElementById('video'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+async function startCapture(){
+  stream=await navigator.mediaDevices.getDisplayMedia({video:{cursor:"always"}});
+  video.srcObject=stream;
+  document.getElementById('status').innerHTML='✅ Quotex Attached! Ab Analysis Start karo';
+  startBtn.style.display='none';analyzeBtn.style.display='block';stopBtn.style.display='block';
+}
+function toggleAnalysis(){
+  if(analyzing){clearInterval(interval);analyzing=false;analyzeBtn.innerText='⚡ LIVE ANALYSIS START';return;}
+  analyzing=true;resultCard.style.display='block';analyzeBtn.innerText='⏸️ PAUSE';
+  interval=setInterval(analyzeFrame,2000);analyzeFrame();
+}
+function stopAll(){if(stream)stream.getTracks().forEach(t=>t.stop());video.srcObject=null;startBtn.style.display='block';analyzeBtn.style.display='none';stopBtn.style.display='none';}
+function analyzeFrame(){
+  if(!video.videoWidth)return;
+  canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  const w=canvas.width,h=canvas.height;
+  const data=ctx.getImageData(w*0.1,h*0.1,w*0.8,h*0.7).data;
+  let green=0,red=0;
+  for(let i=0;i<data.length;i+=16){const r=data[i],g=data[i+1],b=data[i+2];if(g>80&&g>r+30)green++;if(r>80&&r>g+30)red++;}
+  const score=Math.round((green/(green+red||1))*100);
+  greenPx.innerText=green;redPx.innerText=red;
+  if(score>60){signal.innerHTML='<span style=color:#22c55e>UP 🚀 BUY</span>';details.innerText='Green zyada: '+score+'% UP trend';}
+  else if(score<40){signal.innerHTML='<span style=color:#ef4444>DOWN 🔻 SELL</span>';details.innerText='Red zyada: '+(100-score)+'% DOWN trend';}
+  else{signal.innerHTML='WAIT ⏸️';details.innerText='Sideways: '+score+'%';}
+}
+</script></body></html>
